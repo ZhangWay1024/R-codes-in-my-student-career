@@ -1,0 +1,67 @@
+#### to estimate 1-dim linear regression for 100 times #####
+
+# generate beta's true value, and save them as a vector
+beta_0 <- 1.5
+beta_1 <- 0.8
+beta_2 <- 0.5
+beta <- c(beta_0, beta_1, beta_2)
+
+# start numeraical simulations for N times 
+
+N=100
+n=100
+p=2
+
+# after looping 100 times, there will be 100 value of MSE
+MSE <- c()
+
+# after looping 100 times, there will be 100 vector of se_est_beta
+se_est_beta <- matrix(data=NA, 100, 3)
+
+# after looping 100 times, there will be 100 value of sd_est_beta
+sd_est_beta <- c()
+
+#
+est_beta <- matrix(data=NA, 100, 3)
+
+for (i in 1:N) {
+  # generate epsilon and x's true value, this process will be repeated N times in the loop 
+  epsilon <- rnorm(100, 0, sqrt(0.3))
+  x_1 <- rnorm(100, 3, sqrt(2))
+  x_2 <- rnorm(100, 8, sqrt(5))
+  
+  # generate matrix X
+  X <- cbind(rep(1,100), x_1, x_2)
+  
+  # generate y 
+  Y <- X%*%beta+epsilon
+  
+  # calculate the estimations of beta and restore them into a matrix 
+  beta_hat <- solve(t(X)%*%X)%*%t(X)%*%Y
+  est_beta[i,] <- beta_hat
+  
+  # calculate the estimations of Y
+  est_Y <- X%*%beta_hat
+  
+  # calculate e[i]=Y[i]-est_Y[i] 
+  e <- Y-est_Y
+  
+  # calculate estimations of sd of epsilon 
+  est_sigma <- sqrt(t(e)%*%e*(1/(n-p-1)))
+  
+  # calculathe MSE
+  MSE[i] <- sqrt(mean(beta-beta_hat)^2)
+  
+  # se vector of est_beta - SE
+  C <- solve(t(X)%*%X)
+  se_est_beta[i,] <- sqrt(diag(C))%*%est_sigma  
+  
+  # sd of est_beta
+  sd_est_beta[i] <- sd(beta_hat)
+  
+}
+
+# calculate bias
+bias <- colMeans(est_beta[,2:3]-beta[2:3])
+
+print(list(MSE, se_est_beta, sd_est_beta, bias))
