@@ -1,0 +1,67 @@
+##### CQR for Panal data #####
+library(SparseM)
+library(base)
+library(quantreg)
+library(Formula)
+library(MatrixModels)
+library(Matrix)
+library(rqpd)
+library(MASS)
+library(plm)
+#读数据
+yit=as.matrix(read.table("二氧化硫排放量.txt",header=F))
+T=5
+N=length(yit)
+n=N/T
+xit=as.matrix(read.table("外商投资企业.txt",header=F))
+zit1=as.matrix(read.table("人均GDP.txt",header=F))
+zit2=as.matrix(read.table("人均GDP对数的平方.txt",header=F))
+M=3
+yij=log(yit)
+
+Xij2=cbind(xit1,zit1,zit2)
+
+#最小二乘固定效应模型
+time=as.matrix(rep(2012:2016,n))
+E=cbind(as.matrix(rep(1:n,rep(T,n))),time,Xij)
+col.name=c("state","year","M","L","Z")
+colnames(E)=col.name
+E=as.data.frame(E)
+yij1=as.data.frame(yij)
+lsfit=plm(yij1[,1] ~ E[,3]+E[,4]+E[,5],
+          data=E,effect="individual",
+          model="within",index=c("state","year"))
+summary(lsfit)
+coef(lsfit)
+
+#最小二乘法工具变量中消除alfa
+checkyij=matrix(NA,nrow=N,ncol=1)
+checkXij=matrix(NA,nrow=N,ncol=M)
+l=1
+while(l<=n)
+{checkXij[(T*(l-1)+1):(T*l),]=Xij[(T*(l-1)+1):(T*l),]-matrix(rep(apply(Xij[(T*(l-1)+1):(T*l),],2,mean),T),T,byrow=TRUE)
+l=l+1
+}
+ll=1
+while(ll<=n)
+{checkyij[(T*(ll-1)+1):(T*ll)]=yij[(T*(ll-1)+1):(T*ll)]-mean(yij[(T*(ll-1)+1):(T*ll)])
+ll=ll+1
+}
+col.name=c("Z","L","K")
+colnames(checkXij)=col.name
+lnZ=checkXij[,1]#外商投资企业
+lnL=checkXij[,2]#人均GDP
+lnK=checkXij[,3]#人均GDP平方项
+
+#不同分位点下的回归结果比较
+fit1=rq(checkyij~lnZ+lnL+lnK,tau=1:9/10)
+coef(fit1)
+####
+tau= 1:9/10
+SSS=summary(fit1)
+plot(SSS)
+###检验
+summary(fit1,se="boot")
+#99个分位点系数的估计
+fit2=rq(checkyij~lnZ+lnL+lnK,tau=1:99/100) 
+A=coef(fit2)
