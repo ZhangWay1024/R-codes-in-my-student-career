@@ -1,0 +1,31 @@
+##### Mont Calo method to compute pi #####
+
+# x-axis value of points
+x <- runif(1000,0,2)
+# y-axis value of points
+y <- runif(1000,0,2)
+
+# every row of z stands for a point
+z <- cbind(x,y)
+as.matrix(z)
+
+# set the center of circle 
+cen <-c(1,1)
+
+# a function to compute the distence between different points to the center (1,1)
+DistenceFromCenter <- function(x){
+  sqrt(sum((x-cen)^2))
+}
+
+# compute the distence between every points to center(1,1) , save the results as a vector
+distence <- apply(z,1,DistenceFromCenter)
+
+# compute distence of every points to the center
+for (i in 1:100000) {
+  dis[i] <- DistenceFromCenter(x[i],y[i])
+}
+
+dis <- dis[1:100000]
+
+# calculathe the pi by the ratio : [number of points in the circle/all points]
+4*mean(distence<1)
