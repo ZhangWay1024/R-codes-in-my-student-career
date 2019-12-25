@@ -1,0 +1,50 @@
+##### These codes are from book '大数据时代的R语言 数据挖掘：R语言实战' #####
+###### 第六章 关联分析 #####
+### 6.2.2核心函数 ###
+install.packages("arules")                       #下载安装arules程序包
+library(arules)                                  #加载arules程序包
+
+#### 6.2.3数据集 ###
+library(arules)                                  #加载程序包arules
+data("Groceries")                                #读取数据集Groceries
+summary(Groceries)                               #获取Groceries数据集的概括信息
+inspect(Groceries[1:10])                         #观测Groceries数据集的前10条数据
+
+### 6.3.1应用案例-数据初探 ###
+rules0 = apriori(Groceries,parameter = list(support=0.001,confidence=0.5))
+                                                 #生产关联规则arules0
+rules0                                           #显示rules0中的关联规则数
+inspect(rules0[1:10])                            #显示rules0中的前十条关联规则
+
+#### 6.3.2对生成规则进行强度控制 ###
+#1.通过支持度、置信度共同控制
+rules1 = apriori(Groceries,parameter = list(support=0.05,cofidence=0.5))
+                                                 #将支持度调整为0.5，记为rules1
+rules1                                           #显示rules1中的关联规则数
+rules2 = apriori(Groceries,parameter = list(support=0.05,cofidence=0.60))
+                                                 #将支持度调整为0.60，记为rules2
+#2.主要通过支持度控制
+rules.sorted_sup = sort(rules0,by="support")     #给定置信度阈值为0.005，按支持度排序，记为rules.sorted_sup
+inspect(rules.sorted_sup[1:5])                   #输出rules.sorted_sup的前五条关联规则
+#3.主要通过置信度控制
+rules.sorted_con = sort(rules0,by="confidence")  #给定支持度阈值为0.001，按置信度排序，记为rules.sorted_con
+#4.主要通过提升度控制
+rules.sorted_lift = sort(rules0,by="lift")       #给定支持度阈值为0.001，按提升度排序，记为rules.sorted_lift
+inspect(rules4)                                  #观测rules4
+
+### 6.3.4改变输出结果 ###
+itemsets_apr = apriori(Groceries,parameter = list(supp=0.001,target="frequentitemsets"),control = list(sort=-1))
+                                                 #将apriori中目标参数取值设置为“频繁项集”
+itemsets_apr                                     #显示所生成的频繁项集的个数
+inspect(itemsets_apr[1:5])                       #观测前5个频繁项集
+
+### 6.3.5关联规则的可视化 ###
+library(arulesViz)                               #加载程序包arulesViz
+rules5 = apriori(Groceries,parameter = list(support=0.002,confidence=0.5))
+                                                 #生产关联规则5
+plot(rules5)                                     #对关联规则5作散点图
+plot(rules5,measure=c("support","lift"),shading="confidence")
+plot(rules5,interactive=ture)                    #绘制互动散点图
+plot(rules5,shading="order",control=list(main="Two - key plot"))
+                                                 #绘制Two-key图
+plot(rules5,method="grouped")                    #作分组图
