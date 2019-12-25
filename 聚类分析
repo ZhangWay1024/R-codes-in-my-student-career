@@ -1,0 +1,63 @@
+##### These codes are from book '大数据时代的R语言 数据挖掘：R语言实战' #####
+library(data.table)
+#####第七章聚类分析#####
+##### 7.2 R中的实现 #####
+### 7.2.2核心函数 ###
+library("stats")
+library("cluster")
+library("fpc")
+library("mclust")
+install.packages("fpc")
+install.packages("mclust")
+### 7.2.3 ###
+contries <- fread("2.csv",header = T,sep=",")                            #读取数据集，命名为contries
+contries <- contries[ ,1:3]                                              #剔除多余列
+dim(contries)                                                            #读取数据维度
+names(contries) = c("contry","birth","death")                           
+var = as.character(contries$contry)
+for(i in 1:74){                                                          #将数据集contries的行名命名为对应的省份名
+  row.names(contries)[i]=var[i]
+}
+row.names(contries)[1]
+plot(contries$birth,contries$death)
+C = which(contries$contry=="CHINA")
+A = which(contries$contry=="CANADA")
+E = which(contries$contry=="EGYPT")
+P = which(contries$contry=="POLAND")
+J = which(contries$contry=="JAPAN")
+U = which(contries$contry=="UNITED STATES")
+M = which.max(contries$birth)
+points(contries[c(C,A,E,P,J,U,M),-1],pch=16)                             #以实心圆点标出如上省份的点
+legend(contries$birth[J],contries$death[J],"JAPAN",bty="n",xjust=0.5,cex=0.8) #在图中标出JAPAN的图例
+                                                                         
+legend(contries$birth[E],contries$death[E],"EYGPT",bty="n",xjust=0.5,cex=0.8) #在图中标出EYGPT的图例
+                                                                        
+legend(contries$birth[U],contries$death[U],"UNITED STATES",bty="n",xjust=0.5,cex=0.8) #在图中标出US的图例
+                                                                        
+legend(contries$birth[C],contries$death[C],"CHINA",bty="n",xjust=0.5,cex=0.8) #在图中标出CHINA的图例
+                                                                        
+legend(contries$birth[A],contries$death[A],"CANADA",bty="n",xjust=0.5,cex=0.8) #在图中标出CANADA的图例
+                                                                         
+legend(contries$birth[E],contries$death[E],"EYGPT",bty="n",xjust=0.5,cex=0.8) #在图中标出EYGPT的图例
+                                                                        
+legend(contries$birth[M],contries$death[M],"M",bty="n",xjust=0.5,cex=0.8)  #在图中标出出生率最高的图例
+                                                                       
+##### 7.3.1K-均值聚类 #####
+fit_km1 <- kmeans(provinces[,-1],center=3)                               #用K-means聚类对数据集聚类
+print(fit_km1)                                                           #输出聚类结果
+fit_km1$centers                                                          #获取各类别中心点坐标
+fit_km1$totss;fit_km1$tot.withinss;fit_km1$betweenss                     #输出总平方和、组内平方和、组间平方和
+plot(contries[,-1],pch=(fit_km1$cluster-1))                              #将数据集中聚为3类的样本点以不同的形态表示
+legend(fit_km1$centers[1,1],fit_km1$centers[1,2],"center_1",bty="n",xjust=1,yjust = 0,cex = 0.8)
+legend(fit_km1$centers[2,1],fit_km1$centers[2,2],"center_2",bty="n",xjust=0,yjust = 0,cex = 0.8)
+legend(fit_km1$centers[3,1],fit_km1$centers[3,2],"center_3",bty="n",xjust=0.5,yjust = 0,cex = 0.8)
+contries <- contries[1:74]                                               #显示出三个聚类的中心点
+result=rep(1:73)                                                         #创造reult变量来承载74个聚类优度值
+for (k in 1:73){
+fit_km=kmeans(contries[,-1],center=k)
+result[k]=fit_km$betweenss/fit_km$totss                                  #计算类别数为K的聚类优度，存入result中
+}
+round(result,2)                                                          #输出reult，保留两位小数
+plot(1:73,result,type="b",main="choosing the optimal number of cluster",xlab="number of cluster 1:74",
+     ylab="betweenss/totss")
+points()
