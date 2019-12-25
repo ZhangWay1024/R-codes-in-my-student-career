@@ -1,0 +1,167 @@
+##### These codes are from book '大数据时代的R语言 数据挖掘：R语言实战' #####
+##### 5.1 #####
+install.packages("lattice")            #安装lattice软件包
+install.packages("MASS")               #安装MASS软件包
+install.packages("nnet")               #安装nnet软件包
+library(lattice)                       #加载lattice软件包
+library(MASS)                          #加载MASS软件包
+library(nnet)                          #加载nnet软件包
+
+install.packages("mice")               #安装mice软件包
+library(mice)                          #加载mice软件包
+data("nhanes2")                        #获取nhanes2数据集
+nrow(nhanes2);ncol(nhanes2)            #显示nhanes2数据集的行列数
+summary(nhanes2)                       #获取nhanes2数据集的概括信息
+
+head(nhanes2)                          #输出nhanes2数据集的前若干条
+
+
+##### 5.2 #####
+pay<-c(11,19,14,22,14,28,13,81,
+       12,43,11,16,31,16,23,42,22,26,
+       17,22,13,27,180,16,43,82,14,11,
+       51,76,28,66,29,14,14,65,37,16,
+       37,35,39,27,14,17,13,38,28,40,
+       85,32,25,26,16,12,54,40,18,27,
+       16,12,54,40,18,27,16,14,33,29,
+       77,50,19,34)                          #年薪超过10万元的经理收入（单位10万元）
+par(mfrow=c(2,2))                     #将绘图窗口化成2*2，可同时显示4幅画
+hist(pay)                             #绘制直方图
+dotchart(pay)                         #绘制点图
+boxplot(pay,horizontal = T)           #绘制箱型图
+qqnorm(pay);qqline(pay)               #绘制qq图
+
+### 5.2.1缺失值处理 ###
+sum(is.na(nhanes2))                   #计算nhanes2中缺失值的数量
+sum(complete.cases(nhanes2))          #计算nhanes2中完整样本的数量
+md.pattern(nhanes2)                   #观测nhanes2中缺失值的情况
+imp<-mice(nhanes2,m=4)                #生成4组完整的数据库并赋给imp
+fit<-with(imp,lm(chl~age+hyp+bmi))    #生成线性回归模型
+pooled=pool(fit)                      #对建立的4个模型进行汇总
+summary(pooled)                       #展示pooled的结果
+
+#随机抽样插补法
+sub=which(is.na(nhanes2[,4]==TRUE))   #返回nhanes2数据集中第四列为NA的行
+dataTR<-nhanes2[-sub,]                #将第四列不为NA的数存入数据集DATATR中
+dataTE<-nhanes2[sub,]                 #将第四列为NA的数存入数据集DATATE中
+dataTE[,4]<-sample(dataTR[,4],
+                   length(dataTE[,4]),replace = T)       #在非缺失值中简单抽样
+dataTE
+
+#均值查补法
+sub<-which(is.na(nhanes2[,4]==T))     #返回nhanes2数据集中第四列为NA的行
+dataTR<-nhanes2[-sub,]                #将第四列不为NA的数存入数据集DATATR中
+dataTE<-nhanes2[sub,]                 #将第四列为NA的数存入数据集DATATE中
+dataTE[,4]<-mean(dataTR[,4])          #用非缺失值的均值代替缺失值
+dataTE
+
+#回归模型预测法插补
+sub<-which(is.na(nhanes2[,4])==TRUE)  #返回nhanes2数据集中第四列为NA的行
+dataTR<-nhanes2[-sub,]                #将第四列不为NA的数存入数据集DATATR中
+dataTE<-nhanes2[sub,]                 #将第四列为NA的数存入数据集DATATE中
+dataTE
+lm<-lm(chl~age,data=dataTR)           #利用dataTR中age为自变量，chl为因变量构建线性回归模型lm
+nhanes2[sub,4]<-round(predict(lm,dataTE))#利用dataTE中数据按照模型lm对nhanes2中chl中的缺失数据进行预测
+head(nhanes2)                         #缺失值处理后的nhanes2的前若干条
+
+#热平台插补法
+accept<-nhanes2[which(apply(is.na(nhanes2),1,sum)!=0),]#存在缺失值的样本
+donate<-nhanes2[which(apply(is.na(nhanes2),1,sum)==0),]#无缺失值的样本 
+accept[1,]
+donate[1,]
+accept[2,]
+sa<-donate[which(donate[,1]==accept[2,1]&
+                   donate[,3]==accept[2,3]&donate[,4]==accept[2,4]),]#寻找与accept中第2个相似的样本
+sa
+accept[2,2]=sa[1,2]                   #用找到的样本的对应值替代缺失值
+accept[2,]
+
+#冷平台法插补
+level1<-nhanes2[which(nhanes2[,3]=="yes"),]#按照变量hyp分层
+level1
+level1[4,4]=mean(level1[1:3,4])       #用层内均值替代第4个样本的缺失值
+level1
+
+### 5.2.2噪声数据处理 ###
+install.packages("outliers")          #下载outliers包
+library(outliers)                     #加载
+set.seed(1);sl<-.Random.seed          #设置随机数种子，保证每次出现的随机数相同
+y<-rnorm(100)                         #生成100个标准正态随机数
+outlier(y)                            #找出其中离群最远的值
+outlier(y,opposite=TRUE)              #找出最远离群相反的值
+dotchart(y)                           #对y绘制点图
+dim(y)<-c(20,5)                       #将y中的数据重新划分成20行5列的矩阵
+outlier(y,opposite = TRUE)            #求矩阵中每列的离群最远值
+set.seed(1);s1=.Random.seed           #设置随机数种子，保证每次出现的随机数相同
+y=rnorm(10)                           #生成10个标准正态随机数
+outlier(y,logical = TRUE)             #返回相应逻辑值，离群最远值用TRUE标记
+plot(y)                               #绘制散点图
+
+set.seed(1);s1=.Random.seed           #设置随机数种子，保证每次出现的随机数相同
+x<-rnorm(12)                          #生成12个标准正态随机数
+x<-sort(x)                            #将数据从小到大排序
+x[1,]<-apply(x,1,mean)[1]             #用第一行的均值代替第一行的数据
+x[2,]<-apply(x,1,mean)[2]             #用第二行的均值代替第二行的数据
+x[3,]<-apply(x,1,mean)[3]             #用第三行的均值代替第三行的数据
+x                                     #等宽分箱光滑结果
+
+### 5.2.3数据不一致的处理 ###
+x<-list(a=1:10,beta=exp(-3:3),
+        logic=c(TRUE,FALSE,FALSE,TRUE))       #列表
+x
+
+probs<-c(1:3/4)
+rt.value<-c(0,0,0)                    #设置返回值为3个数字
+vapply(x,quantile,FUN.VALUE=rt.value,probs=probs)
+
+rt.value<-c(0,0,0,0)                  #设置返回值为4个数字
+vapply(x,quantile,FUN.VALUE=rt.value,probs=probs)
+rt.value<-c(0,0,0,"")                 #设置返回值为3个数字和一个字符
+vapply(x,quantile,FUN.VALUE=rt.value,probs=probs)
+
+
+##### 5.3数据集成 #####
+x<-cbind(sample(c(1:50),10),
+         sample(c(1:50),10))                  #生成由两列不相关的定性数据组成的矩阵
+chisq.test(x)                        #对矩阵x进行卡方检验，检查两列是否相关
+
+x<-cbind(rnorm(10),rnorm(10))        #生成由两列标准正态随机数组成的矩阵x
+cor(x)                               #求两列数据的相关系数
+cov(x)                               #求两列数据的协方差
+
+x<-cbind(sample(c(1:10),10,replace = T),
+         rnorm(10),rnorm(10))        #随机生成数据集，其中第一列为样本编号，若样本编号相同则认为存在重复
+head(x)                              #去掉重复值的数据集前若干个观测值
+y<-unique(x[,1])                     #将样本编号去掉重复
+sub=rep(0,length(y))                 #生成列向量备用
+for(i in 1:length(y))sub[1]=which(x[,1]==y[i])[1]#循环，根据样本编号筛选数据集，去掉重复观测值
+x=x[sub,]
+head(x)                              #去掉重复值的数据集前若干个观测值
+
+
+##### 5.4数据变换 #####
+set.seed(1);s1=.Random.seed          #设置随机数种子，保证每次出现的随机数相同
+a<-rnorm(5)                          #生成5个标准正态随机数
+b<-scale(a)                          #对该列随机数标准化
+b
+
+a<-c(0.7063422,0.7633599,0.6675749,
+     0.6100253,0.9341495,0.6069284,0.3462011)
+n<-length(a)
+la=rep(0,n)
+la[which(a>0.5)]=1
+la
+
+city<-c(6,7,6,2,2,6,2,1,5,7,2,1,1,6,1,3,8,8,1,1)
+province<-rep(0,20)
+province[which(city>4)]=1
+province
+
+install.packages("glmnet")
+library(glmnet)
+x=matrix(rnorm(100*20),100,20)        #生成自变量，为20列正态随机数
+y=rnorm(100)                          #生成一列正态随机数作为因变量
+fit1=glmnet(x,y)                      #广义线性回归，自变量未分组的，默认为LASSO
+b=coef(fit1,s=0.01)                   #s代表人，随着纳闷大减小，约束放宽，筛选的变量越多
+b                                     #b代表变量系数，有值的被选入模型
+predict(fit1,newx = x[1:10,],s=c(0.01,0.005))#人分别为0.01和0.005情况下的预测值
