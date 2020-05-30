@@ -1,0 +1,237 @@
+# it will be better to download R packages with this miror below 
+options("repos" = c(CRAN="http://mirrors.opencas.cn/cran/ "))
+
+memory.limit(102400)
+memory.size()
+setwd("D:/R/WorkSpace")
+
+# load packagers
+install.packages('fastrtext')
+install.packages("magrittr")
+install.packages("textTinyR")
+install.packages('text2vec')
+install.packages('stringr')
+install.packages('tm')
+install.packages("tmcn")
+install.packages("tmcn", repos = "http://R-Forge.R-project.org")
+install.packages("e1071")
+install.packages("nnet")
+install.packages("gmodels")
+install.packages("devtools")
+devtools::install_github("rstudio/keras")
+install.packages("randomForests")
+install.packages("rpart")
+install.packages("tmcn.word2vec",repos='http://lib.stat.cmu.edu/R/CRAN/')
+
+library("fastrtext")
+library("magrittr")
+library("jiebaR")
+library('textTinyR')
+library('text2vec')
+library("tm")
+library("tmcn")
+library("e1071")
+library("nnet")
+library("gmodels")
+library("magrittr")
+library("rpart")
+library("maxent")
+
+
+
+##### segments ------------------------------------------------------------------------
+# clear objective variable in R and releas memory
+rm(list)
+gc(list)
+list=ls();list[1]
+
+#首先检查当前的内存限制
+memory.limit()
+#1600表示当前只有1.6M的内存分配的能力
+#重新设置内存限制
+memory.limit(1000000)# 1G
+memory.size(NA)
+
+# crate a list to restore the names of my 5466 txt files 
+a = list.files(pattern = ".txt") 
+
+# crate a list to restore all the segments of every txt file
+policy <- list()
+
+# read all txt files and segment, then form a list "policy" 
+# where every item in "policy" is the result segment of the matching txt file
+# delete numbers and characters in the txt 
+for (i in 1:5466){    
+  b <- readLines(a[i], 
+                 encoding = "UTF-8") %>%
+  
+       gsub("\\d","",.) %>% # delete numbers 
+  
+       gsub("[[:lower:]]","",.) # delete English letters 
+  
+  engine <- jiebaR::worker(user = "dictionary.txt", 
+                           stop_word = "stopwords.txt")  # set the segment engine with the method MixSegment
+  
+  policy[[i]] <- jiebaR::segment(b,engine) # segment                                        
+}
+
+
+# write every segment into txt file in order to conduct a modal in PYTHON
+for (i in 1:5466) {
+  write.table(policy[[i]], 
+              paste("policy","(",substring(a[i],1,4),").txt",sep = ""), 
+              quote = FALSE, 
+              row.names = FALSE, 
+              col.names = FALSE, 
+              fileEncoding = "UTF-8")
+}
+
+# import segmented text files using "for" loop 
+for (i in 1:5466){    
+   txt <- readLines(paste(i,".txt"), 
+                    encoding = "ANSI") 
+
+   policy[[i]] <- txt                                      
+}
+
+# import segmented documnets -----------------------------------------------------------
+# crate a subset of the dataset with 10 documents 
+my <- list()
+N = 5466
+for (i in 1:N) {
+  my[[i]] <- readLines(a[i],
+                       encoding = "UTF-8",
+                       n=1024) 
+}
+
+
+
+# doncument-term-metrix ------------------------------------------------------------------------------
+
+# 将切词转化为语料库
+content_corpus <- Corpus(VectorSource(my), readerControl = list(language = "UTF-8"))
+
+# create DTM with BOW
+dtm.bow  <- createDTM(my, 
+                      language = c("zh", "en"), 
+                      tokenize = NULL , removePunctuation = TRUE,
+                      removeNumbers = TRUE, 
+                      removeStopwords = TRUE)
+# remove terms from dtm_bow and show the dimension 
+dtm.bow.removed = removeSparseTerms(x = dtm.bow, sparse = 0.95)
+length(dtm.bow$dimnames$Terms)
+# show the dimension of the DTM 
+length(dtm.bow.removed$dimnames$Terms)
+
+ # transform the DTM form BOW to TF-IDF and show the dimension
+dtm.tfidf <- weightTfIdf(dtm.bow)
+length(dtm.tfidf$dimnames$Terms)
+# remove terms from dtm_tfidf
+dtm.tfidf.removed = removeSparseTerms(x = dtm.tfidf, sparse = 0.89) 
+# show the dimension of the DTM 
+length(dtm.tfidf.removed$dimnames$Terms)
+
+# transfer the DTM into data.frame
+dtm.bow.data <-  as.matrix(dtm.bow, encoding="UTF-8") %>% as.data.frame(.)
+dtm.tfidf.data <- as.matrix(dtm.tfidf, encoding="UTF-8") %>% as.data.frame(.)
+
+dtm.bow.data <-  as.matrix(dtm.bow.removed, encoding="UTF-8") %>% as.data.frame(.)
+dtm.tfidf.data <- as.matrix(dtm.tfidf.removed, encoding="UTF-8") %>% as.data.frame(.)
+
+# import the tag for each document 
+tag <- readClipboard() %>% as.factor(.)
+# bind the dtm matrix and the tag 
+words <- cbind(tag, dtm.tfidf.data)
+
+
+# split the data into train_set and test_set
+# 定义序列ind，随机抽取1和2,1的个数占80%，2的个数占20%
+set.seed(2)
+ind <- sample(c(1:N), 0.2*N, replace = F)
+train_data <- words[-ind,] # 训练数据
+test_data<- words[ind,] # 测试数据
+
+train_tag <- tag[-ind] # 训练标签
+test_tag <- tag[ind] # 测试标签
+
+##### classification I:nnet-------------------------------------------------------
+
+# choose the parameter range 
+r = 1/max(abs(train_data[,-1]))
+
+# seek for the best 'size' : hidden nodes 
+err1 = 0
+err2 = 0
+
+for(i in (18:30)){
+  # nural net work model 
+  model_1 <- nnet(tag~.,
+                  data=train_data,
+                  size = i,
+                  MaxNWts=30000)
+  err1[i] = sum(predict(model_1, test_data[,-1], type = "class")!= test_data[,1])/200
+  err2[i] = sum(predict(model_1, train_data[,-1], type = "class")!= train_data[,1])/200
+}
+
+plot(1:23, err1, "l",col=1, lty=1, ylab="模型误判率", xlab="模型隐藏节点",
+     ylim=c(min(min(err1),min(err2)), max(max(err1),max(err2))))
+lines(1:23, err2, col=1, lty=3)
+points(1:23, err1, col=1, pch="+")
+points(1:23, err2, col=1, pch="o")
+legend(1, 0.53, "测试集误判率", bty="n", cex=1)
+legend(1, 0.35, "训练集误判率", bty="n", cex=1)
+# the best 'size'
+which.min(err1)
+
+# nural net work model 
+model_1 <- nnet(tag~.,
+                data=train_data,
+                range = r,
+                size = 30,
+                MaxNWts=300000)
+
+# predict the test data 
+pred_1=predict(model_1,
+               test_data[,-1],
+               type = "class")
+
+# accuracy 
+accuracy_1 = (sum(predict(model_1, test_data[,-1], type = "class") == test_data[,1])/400)
+pred_1 = predict(model_1, test_data[,-1], type = "class")
+test_tag
+
+##### Classification II:Bayesian-----------------------------------------------
+
+# fit the model
+model_2 <- naiveBayes(tag ~.,
+                      data = train_data)
+# predict 
+pred_2=predict(model_2,
+               test_data[,-1])
+# write the confusion matrix into csv because it is so large 
+accuracy_2 = (sum(predict(model_2, test_data[,-1], type = "class") == test_data[,1])/400)
+
+##### classification III: SVM-----------------------------------------------
+
+# fit the model
+model_3 <- svm(tag ~.,
+               data = train_data,
+               type = "C-classification")
+# predict 
+pred_3=predict(model_3,
+               test_data[,-1])
+# write the confusion matrix into csv because it is so large 
+accuracy_3 = (sum(predict(model_3, test_data[,-1], type = "class") == test_data[,1])/400)
+
+##### classification IV : rpart -------------------------------------------------------------
+
+# fit the model
+model_4 <- rpart(tag ~.,
+               data = train_data,
+               method = "class",
+               parms = list(split='information'))
+
+# write the confusion matrix into csv because it is so large 
+accuracy_4 = (sum(predict(model_4, test_data[,-1], type = "class") == test_data[,1])/400)
+
+
