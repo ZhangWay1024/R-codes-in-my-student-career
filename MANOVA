@@ -1,0 +1,98 @@
+pottery.txt
+L 14.4 7.00 4.30 0.15 0.51
+L 13.8 7.08 3.43 0.12 0.17
+L 14.6 7.09 3.88 0.13 0.20
+L 11.5 6.37 5.64 0.16 0.14
+L 13.8 7.06 5.34 0.20 0.20
+L 10.9 6.26 3.47 0.17 0.22
+L 10.1 4.26 4.26 0.20 0.18
+L 11.6 5.78 5.91 0.18 0.16
+L 11.1 5.49 4.52 0.29 0.30
+L 13.4 6.92 7.23 0.28 0.20
+L 12.4 6.13 5.69 0.22 0.54
+L 13.1 6.64 5.51 0.31 0.24
+L 12.7 6.69 4.45 0.20 0.22
+L 12.5 6.44 3.94 0.22 0.23
+C 11.8 5.44 3.94 0.30 0.04
+C 11.6 5.39 3.77 0.29 0.06
+I 18.3 1.28 0.67 0.03 0.03
+I 15.8 2.39 0.63 0.01 0.04
+I 18.0 1.50 0.67 0.01 0.06
+I 18.0 1.88 0.68 0.01 0.04
+I 20.8 1.51 0.72 0.07 0.10
+A 17.7 1.12 0.56 0.06 0.06
+A 18.3 1.14 0.67 0.06 0.05
+A 16.7 0.92 0.53 0.01 0.05
+A 14.8 2.74 0.67 0.03 0.05
+A 19.1 1.64 0.60 0.10 0.03
+
+# import data 
+data <- read.table("pottery.txt", header = F)
+
+MANOVA <- function(data, alpha){
+#####STEP I----------------------
+  p <- dim(data)[2]-1 # check the number of variable of the data 
+  N <- dim(data)[1] # check the total number of observations 
+  g <- length(unique(data[,1])) # check the number of groups 
+  group <- unique(data[,1]) # show the group and its name 
+  s <- c() # crate a vector to restore how many subjects each group has 
+  for (i in (1:g)) {
+    s[i] <- length(which(data[,1] == group[i])) # the ith item of 's' stands for the number of subjects of the ith group
+  }
+# calculate mean-vector for each gourp  
+  names <- c()
+  mean_vector <- list() # each item of this list stands for the mean_vector of each group
+  for (i in (1:g)) {
+    names[i] <- paste("mean_vector_of_",i,sep = "")
+    assign(names[i], colMeans(data[which(data[,1]==group[i]),-1]))
+    mean_vector[[i]] <-  colMeans(data[which(data[,1]==group[i]),-1])
+  }
+# calculate the total mean-vector 
+  t_mean_vector <- colMeans(data[,-1])
+  
+#####STEP II-----------------------
+# calculate the matrix E
+  E_list <- list()
+  E <- matrix(0, p, p)
+  for (i in 1:g) {
+    E_list[[i]] <- matrix(0, p, p)
+    for (j in (which(data[,1]==group[i]))) {
+      E_list[[i]] = E_list[[i]] + t(data[j,-1]-mean_vector[[i]])%*%as.matrix(data[j,-1]-mean_vector[[i]])
+    }
+    E = E + E_list[[i]]
+  }
+# calculate the matrix H 
+  H_list <- list()
+  H <- matrix(0, p, p)
+  for (i in 1:g) {
+    H_list[[i]] <- s[i]*(mean_vector[[i]]-t_mean_vector)%*%t(mean_vector[[i]]-t_mean_vector)
+    H = H + H_list[[i]]
+  }
+#calculate the matrix T
+  T = E + H
+
+#####STEP III-----------------------   
+# calculate parameters for judging
+  w_lamda <- det(E)/det(T)
+  a = N-g-(p-g+2)/2
+  if(((p^2+(g-1)^2)-5)>0){
+    b = sqrt((p^2*(g-1)^2-4)/(p^2+(g-1)^2-5))
+  }else{b = 1}
+  c = (p*(g-1)-2)/2
+  F = ((1-w_lamda^(1/b))*(a*b-c))/((w_lamda^(1/b))*(p*(g-1)))
+ 
+#####STEP IV-----------------------
+# print answers 
+  f <- qf(1-alpha,p*(g-1),a*b-c) # critical value 
+  if(F>f){
+    results <- list(w_lamda, paste(F,">", f),"Reject null hypothesis ")
+  }    
+  else{
+    results <- list(w_lamda, paste(F, "<",f),"Do not reject null hypothesis ")
+  }
+  return(results)
+}
+
+# test 
+MANOVA(data, 0.05)
+
