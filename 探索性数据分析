@@ -1,4 +1,5 @@
 ##### These codes are from book '大数据时代的R语言 数据挖掘：R语言实战' #####
+
 install.packages("MASS") #安装MASS软件包                                                                                
 library(MASS) #加载MASS软件包
 data(Insurance) #获取Insurance数据集
