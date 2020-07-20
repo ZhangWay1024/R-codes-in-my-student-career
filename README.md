@@ -5,6 +5,6 @@ Some codes that I progressed in my student career
 If you are interested in R, don't be shy to discuss with me and share your codes .
 
 This repository includes now 
-- LDA
-- 数据挖掘初步
-- 多元统计
+- ***LDA***
+- ***R语言与数据挖掘***
+- ***多元统计（Applied Multivariate statistical analysis) *** 
