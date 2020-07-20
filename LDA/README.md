@@ -71,7 +71,7 @@ documents <- lapply(doc.list, get.terms)
 
 至此，我们就准备好了做LDA建模需要用的数据了。
 
-###LDA主题建模
+### LDA主题建模
 这部分没啥好说的，直接上代码：
 
 ```
