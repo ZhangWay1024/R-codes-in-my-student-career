@@ -8,3 +8,4 @@ This repository includes now
 - ***LDA***
 - ***R语言与数据挖掘***
 - ***多元统计（Applied Multivariate statistical analysis)*** 
+- ***Learning***
